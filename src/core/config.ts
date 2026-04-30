@@ -60,7 +60,7 @@ const WorkboxConfigSchema = z
   })
   .strict();
 
-export type WorkboxConfig = z.infer<typeof WorkboxConfigSchema>;
+type WorkboxConfig = z.infer<typeof WorkboxConfigSchema>;
 
 export type ResolvedWorkboxConfig = WorkboxConfig & {
   worktrees: WorkboxConfig["worktrees"] & { directory: string };

@@ -6,7 +6,7 @@ type GlobalFlags = {
   nonInteractive: boolean;
 };
 
-export type CommandContext = {
+type CommandContext = {
   cwd: string;
   repoRoot: string;
   worktreeRoot: string;
@@ -15,7 +15,7 @@ export type CommandContext = {
   flags: GlobalFlags;
 };
 
-export type CommandResult = {
+type CommandResult = {
   message: string;
   data?: unknown;
   exitCode?: number;
