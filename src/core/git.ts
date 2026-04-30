@@ -1,4 +1,4 @@
-import { mkdir, realpath } from "node:fs/promises";
+import { access, mkdir, realpath } from "node:fs/promises";
 import { join, relative, resolve, sep } from "node:path";
 
 import { CliError } from "../ui/errors";
@@ -61,6 +61,15 @@ const normalizePath = async (path: string): Promise<string> => {
     return await realpath(path);
   } catch {
     return resolve(path);
+  }
+};
+
+const pathExists = async (path: string): Promise<boolean> => {
+  try {
+    await access(path);
+    return true;
+  } catch {
+    return false;
   }
 };
 
@@ -254,6 +263,10 @@ export const createWorktree = async (input: {
     ["worktree", "add", "-b", managedBranch, worktreePath, input.baseRef],
     input.repoRoot
   );
+
+  if (await pathExists(join(worktreePath, ".gitmodules"))) {
+    await runGit(["submodule", "update", "--init", "--recursive"], worktreePath);
+  }
 
   return {
     name: input.name,

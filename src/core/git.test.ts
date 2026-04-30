@@ -1,5 +1,5 @@
 import { describe, expect, it, spyOn } from "bun:test";
-import { mkdtemp, realpath, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as gitModule from "./git";
@@ -23,6 +23,7 @@ const runGit = async (args: string[], cwd: string): Promise<string> => {
   const proc = Bun.spawn({
     cmd: ["git", ...args],
     cwd,
+    env: process.env,
     stdout: "pipe",
     stderr: "pipe",
   });
@@ -44,6 +45,7 @@ const gitSucceeds = async (args: string[], cwd: string): Promise<boolean> => {
   const proc = Bun.spawn({
     cmd: ["git", ...args],
     cwd,
+    env: process.env,
     stdout: "ignore",
     stderr: "ignore",
   });
@@ -67,6 +69,52 @@ const withRepo = async (fn: (repoRoot: string) => Promise<void>) => {
 };
 
 describe("core/git worktrees", () => {
+  it("initializes submodules when creating a managed worktree", async () => {
+    const originalAllowProtocol = process.env.GIT_ALLOW_PROTOCOL;
+    process.env.GIT_ALLOW_PROTOCOL = "file";
+
+    try {
+      const submoduleRoot = await mkdtemp(join(tmpdir(), "workbox-submodule-"));
+      try {
+        await runGit(["init"], submoduleRoot);
+        await runGit(["config", "user.email", "test@example.com"], submoduleRoot);
+        await runGit(["config", "user.name", "Test"], submoduleRoot);
+        await writeFile(join(submoduleRoot, "submodule.txt"), "submodule\n");
+        await runGit(["add", "submodule.txt"], submoduleRoot);
+        await runGit(["commit", "-m", "init submodule"], submoduleRoot);
+
+        await withRepo(async (repoRoot) => {
+          await runGit(["submodule", "add", submoduleRoot, "deps/submodule"], repoRoot);
+          await runGit(["commit", "-am", "add submodule"], repoRoot);
+
+          const worktreesDir = join(repoRoot, ".workbox", "worktrees");
+          const branchPrefix = "wkb/";
+
+          const created = await createWorktree({
+            repoRoot,
+            worktreesDir,
+            branchPrefix,
+            baseRef: "HEAD",
+            name: "box1",
+          });
+
+          expect(await readFile(join(created.path, "deps/submodule/submodule.txt"), "utf8")).toBe(
+            "submodule\n"
+          );
+          expect(await runGit(["submodule", "status"], created.path)).not.toStartWith("-");
+        });
+      } finally {
+        await rm(submoduleRoot, { recursive: true, force: true });
+      }
+    } finally {
+      if (originalAllowProtocol === undefined) {
+        delete process.env.GIT_ALLOW_PROTOCOL;
+      } else {
+        process.env.GIT_ALLOW_PROTOCOL = originalAllowProtocol;
+      }
+    }
+  });
+
   it("creates, lists, statuses, and removes a managed worktree without deleting the branch", async () => {
     await withRepo(async (repoRoot) => {
       const worktreesDir = join(repoRoot, ".workbox", "worktrees");
