@@ -2,6 +2,14 @@
 
 ## [unreleased]
 
+## [0.3.1] - 2026-05-01
+### Chore
+- Remove stale config planning doc
+### Documentation
+- Update install instructions
+### Features
+- Add --version flag (#13)
+
 ## [0.3.0] - 2026-05-01
 ### Chore
 - (deps) Update softprops/action-gh-release action to v3 (#11)
