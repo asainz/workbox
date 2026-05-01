@@ -1,6 +1,6 @@
 {
   "name": "@alecrust/workbox",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Bun-first CLI for managing Git worktree sandboxes.",
   "license": "MIT",
   "type": "module",

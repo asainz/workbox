@@ -2,6 +2,13 @@
 
 ## [unreleased]
 
+## [0.3.0] - 2026-05-01
+### Chore
+- (deps) Update softprops/action-gh-release action to v3 (#11)
+- (deps) Update dependency node to v24 (#10)
+### Features
+- Add global config defaults (#12)
+
 ## [0.2.0] - 2026-04-30
 ### Bug Fixes
 - (ci) Repair release workflow
