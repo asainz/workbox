@@ -37,12 +37,18 @@ wkb exec <name> -- <cmd...>           # run a command in a sandbox
 
 ## Config
 
-Looks for config in:
+Looks for global config in:
+
+1. `$XDG_CONFIG_HOME/workbox/config.toml`
+2. `~/.workbox/config.toml` when `$XDG_CONFIG_HOME` is not set
+
+Then looks for project config in:
 
 1. `.workbox/config.toml`
 2. `workbox.toml`
 
-Config is required. Paths are resolved relative to the repo root.
+Config is required from at least one global or project location. Global config provides defaults;
+project config overrides only the settings it defines. Paths are resolved relative to the repo root.
 `worktrees.directory` must resolve within the repo root.
 
 Example:
