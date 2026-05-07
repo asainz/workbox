@@ -1,4 +1,5 @@
 import { createWorktree } from "../core/git";
+import { runProvision } from "../provision/runner";
 import { UsageError } from "../ui/errors";
 import { parseArgsOrUsage } from "./parse";
 import type { CommandDefinition } from "./types";
@@ -46,9 +47,27 @@ export const newCommand: CommandDefinition = {
       baseRef,
     });
 
+    let provisionResult: Awaited<ReturnType<typeof runProvision>> | undefined;
+    if (context.config.provision.enabled) {
+      provisionResult = await runProvision(context.config.provision, {
+        sourceRoot: context.worktreeRoot,
+        targetRoot: worktree.path,
+        worktreeName: worktree.name,
+        mode: context.flags.json ? "capture" : "inherit",
+      });
+
+      if (provisionResult.exitCode !== 0) {
+        return {
+          message: provisionResult.message,
+          data: { worktree, provision: provisionResult },
+          exitCode: provisionResult.exitCode,
+        };
+      }
+    }
+
     return {
       message: `Created worktree "${worktree.name}" at ${worktree.path} on branch ${worktree.managedBranch}.`,
-      data: worktree,
+      data: provisionResult ? { worktree, provision: provisionResult } : worktree,
     };
   },
 };

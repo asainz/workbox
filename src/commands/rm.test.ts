@@ -75,6 +75,11 @@ describe("rm command", () => {
           enabled: false,
           steps: [],
         },
+        provision: {
+          enabled: false,
+          copy: [],
+          steps: [],
+        },
       };
 
       const context = {
@@ -108,6 +113,11 @@ describe("rm command", () => {
           enabled: false,
           steps: [],
         },
+        provision: {
+          enabled: false,
+          copy: [],
+          steps: [],
+        },
       };
 
       const context = {
@@ -137,6 +147,11 @@ describe("rm command", () => {
         },
         bootstrap: {
           enabled: false,
+          steps: [],
+        },
+        provision: {
+          enabled: false,
+          copy: [],
           steps: [],
         },
       };
@@ -171,6 +186,11 @@ describe("rm command", () => {
         },
         bootstrap: {
           enabled: false,
+          steps: [],
+        },
+        provision: {
+          enabled: false,
+          copy: [],
           steps: [],
         },
       };
@@ -218,6 +238,11 @@ describe("rm command", () => {
           enabled: false,
           steps: [],
         },
+        provision: {
+          enabled: false,
+          copy: [],
+          steps: [],
+        },
       };
 
       await createWorktree({
@@ -262,6 +287,11 @@ describe("rm command", () => {
         },
         bootstrap: {
           enabled: false,
+          steps: [],
+        },
+        provision: {
+          enabled: false,
+          copy: [],
           steps: [],
         },
       };
@@ -312,6 +342,11 @@ describe("rm command", () => {
         },
         bootstrap: {
           enabled: false,
+          steps: [],
+        },
+        provision: {
+          enabled: false,
+          copy: [],
           steps: [],
         },
       };

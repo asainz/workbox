@@ -28,6 +28,28 @@ const BootstrapObjectSchema = z
   })
   .strict();
 
+const ProvisionCopySchema = z
+  .object({
+    from: z.string().min(1, "Provision copy source is required."),
+    to: z.string().min(1, "Provision copy destination is required."),
+    required: z.boolean().default(false),
+  })
+  .strict();
+
+const PartialProvisionCopySchema = ProvisionCopySchema.omit({ required: true })
+  .extend({
+    required: z.boolean().optional(),
+  })
+  .strict();
+
+const ProvisionObjectSchema = z
+  .object({
+    enabled: z.boolean(),
+    copy: z.array(ProvisionCopySchema).default([]),
+    steps: z.array(BootstrapStepSchema).default([]),
+  })
+  .strict();
+
 const validateBootstrapSteps = (
   steps: Array<z.infer<typeof BootstrapStepSchema>>,
   ctx: z.RefinementCtx
@@ -49,6 +71,27 @@ const BootstrapSchema = BootstrapObjectSchema.superRefine((value, ctx) => {
   validateBootstrapSteps(value.steps, ctx);
 });
 
+const validateProvisionSteps = (
+  steps: Array<z.infer<typeof BootstrapStepSchema>>,
+  ctx: z.RefinementCtx
+) => {
+  const seen = new Set<string>();
+  steps.forEach((step, index) => {
+    if (seen.has(step.name)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["steps", index, "name"],
+        message: `Duplicate provision step name "${step.name}".`,
+      });
+    }
+    seen.add(step.name);
+  });
+};
+
+const ProvisionSchema = ProvisionObjectSchema.superRefine((value, ctx) => {
+  validateProvisionSteps(value.steps, ctx);
+});
+
 const WorktreesSchema = z
   .object({
     directory: z.string().min(1, "Worktree directory is required."),
@@ -61,6 +104,7 @@ const WorkboxConfigSchema = z
   .object({
     worktrees: WorktreesSchema,
     bootstrap: BootstrapSchema,
+    provision: ProvisionSchema.default({ enabled: false, copy: [], steps: [] }),
     dev: z
       .object({
         command: z.string().min(1, "Dev command is required."),
@@ -80,6 +124,19 @@ const PartialWorkboxConfigSchema = z
       .superRefine((value, ctx) => {
         if (value.steps) {
           validateBootstrapSteps(value.steps, ctx);
+        }
+      })
+      .optional(),
+    provision: z
+      .object({
+        enabled: z.boolean().optional(),
+        copy: z.array(PartialProvisionCopySchema).optional(),
+        steps: z.array(BootstrapStepSchema).optional(),
+      })
+      .strict()
+      .superRefine((value, ctx) => {
+        if (value.steps) {
+          validateProvisionSteps(value.steps, ctx);
         }
       })
       .optional(),
@@ -148,6 +205,13 @@ const mergeConfig = (configs: PartialWorkboxConfig[]): PartialWorkboxConfig =>
       merged.bootstrap = {
         ...merged.bootstrap,
         ...config.bootstrap,
+      };
+    }
+
+    if (config.provision) {
+      merged.provision = {
+        ...merged.provision,
+        ...config.provision,
       };
     }
 

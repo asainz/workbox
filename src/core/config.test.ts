@@ -51,6 +51,20 @@ describe("loadConfig", () => {
     });
   });
 
+  it("defaults provision to disabled when it is not configured", async () => {
+    await withTempDir(async (cwd) => {
+      await writeFile(join(cwd, "workbox.toml"), minimalConfig);
+
+      const result = await loadTestConfig(cwd);
+
+      expect(result.config.provision).toEqual({
+        enabled: false,
+        copy: [],
+        steps: [],
+      });
+    });
+  });
+
   it("loads global config from the fallback home path when no project config exists", async () => {
     await withTempDir(async (cwd) => {
       const homeDir = join(cwd, "home");
@@ -136,6 +150,47 @@ open = "open http://localhost:4000"
     });
   });
 
+  it("merges project provision config over global provision config", async () => {
+    await withTempDir(async (cwd) => {
+      const homeDir = join(cwd, "home");
+      await mkdir(join(homeDir, ".workbox"), { recursive: true });
+      await writeFile(
+        join(homeDir, ".workbox", "config.toml"),
+        `${minimalConfig}
+[provision]
+enabled = true
+
+[[provision.copy]]
+from = ".env"
+to = ".env"
+required = true
+
+[[provision.steps]]
+name = "global"
+run = "echo global"
+`
+      );
+      await writeFile(
+        join(cwd, "workbox.toml"),
+        `[provision]
+enabled = false
+
+[[provision.copy]]
+from = ".env.local"
+to = ".env.local"
+`
+      );
+
+      const result = await loadTestConfig(cwd, homeDir);
+
+      expect(result.config.provision).toEqual({
+        enabled: false,
+        copy: [{ from: ".env.local", to: ".env.local", required: false }],
+        steps: [{ name: "global", run: "echo global" }],
+      });
+    });
+  });
+
   it("rejects when merged global and project config is incomplete", async () => {
     await withTempDir(async (cwd) => {
       const homeDir = join(cwd, "home");
@@ -202,6 +257,42 @@ directory = ".workbox/worktrees"
         .replace("enabled = false", "enabled = true");
       await writeFile(join(cwd, "workbox.toml"), duplicateConfig);
       await expect(loadTestConfig(cwd)).rejects.toThrow(/Duplicate bootstrap step name/);
+    });
+  });
+
+  it("rejects duplicate provision step names", async () => {
+    await withTempDir(async (cwd) => {
+      await writeFile(
+        join(cwd, "workbox.toml"),
+        `${minimalConfig}
+[provision]
+enabled = true
+steps = [
+  { name = "copy", run = "echo one" },
+  { name = "copy", run = "echo two" }
+]
+`
+      );
+
+      await expect(loadTestConfig(cwd)).rejects.toThrow(/Duplicate provision step name/);
+    });
+  });
+
+  it("rejects invalid provision copy entries", async () => {
+    await withTempDir(async (cwd) => {
+      await writeFile(
+        join(cwd, "workbox.toml"),
+        `${minimalConfig}
+[provision]
+enabled = true
+
+[[provision.copy]]
+from = ""
+to = ".env"
+`
+      );
+
+      await expect(loadTestConfig(cwd)).rejects.toThrow(/provision.copy.0.from/);
     });
   });
 

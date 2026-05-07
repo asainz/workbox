@@ -1,5 +1,5 @@
 import { describe, expect, it, spyOn } from "bun:test";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -65,6 +65,7 @@ const buildConfig = (
     baseRef?: string;
     bootstrapEnabled?: boolean;
     bootstrapSteps?: ResolvedWorkboxConfig["bootstrap"]["steps"];
+    provision?: ResolvedWorkboxConfig["provision"];
     dev?: ResolvedWorkboxConfig["dev"];
   }
 ): ResolvedWorkboxConfig => {
@@ -77,6 +78,11 @@ const buildConfig = (
     bootstrap: {
       enabled: options?.bootstrapEnabled ?? false,
       steps: options?.bootstrapSteps ?? [],
+    },
+    provision: options?.provision ?? {
+      enabled: false,
+      copy: [],
+      steps: [],
     },
     ...(options?.dev ? { dev: options.dev } : {}),
   };
@@ -148,6 +154,60 @@ describe("new command", () => {
       const context = buildContext(repoRoot, buildConfig(repoRoot, { baseRef: "HEAD" }));
       const result = await newCommand.run(context, ["box1", "--from", "HEAD"]);
       expect(result.message).toContain('Created worktree "box1"');
+    });
+  });
+
+  it("provisions configured files after creating a worktree", async () => {
+    await withRepo(async (repoRoot) => {
+      await writeFile(join(repoRoot, ".env"), "TOKEN=local\n");
+      const context = buildContext(
+        repoRoot,
+        buildConfig(repoRoot, {
+          baseRef: "HEAD",
+          provision: {
+            enabled: true,
+            copy: [{ from: ".env", to: ".env", required: false }],
+            steps: [],
+          },
+        }),
+        { json: true }
+      );
+
+      const result = await newCommand.run(context, ["box1"]);
+      const worktreePath = join(repoRoot, ".workbox", "worktrees", "box1");
+
+      expect(result.exitCode).toBeUndefined();
+      expect(result.data).toEqual(
+        expect.objectContaining({
+          worktree: expect.objectContaining({ name: "box1" }),
+          provision: expect.objectContaining({ status: "ok" }),
+        })
+      );
+      expect(await readFile(join(worktreePath, ".env"), "utf8")).toBe("TOKEN=local\n");
+    });
+  });
+
+  it("keeps the worktree when provisioning fails", async () => {
+    await withRepo(async (repoRoot) => {
+      const context = buildContext(
+        repoRoot,
+        buildConfig(repoRoot, {
+          baseRef: "HEAD",
+          provision: {
+            enabled: true,
+            copy: [{ from: ".env", to: ".env", required: true }],
+            steps: [],
+          },
+        }),
+        { json: true }
+      );
+
+      const result = await newCommand.run(context, ["box1"]);
+      const worktreePath = join(repoRoot, ".workbox", "worktrees", "box1");
+
+      expect(result.exitCode).toBe(1);
+      expect(result.message).toContain("missing required source");
+      expect(await readFile(join(worktreePath, "README.md"), "utf8")).toBe("hello\n");
     });
   });
 });

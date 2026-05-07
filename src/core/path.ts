@@ -42,7 +42,12 @@ const checkSegmentsWithinRoot = async (
         }
       }
     } catch (error) {
-      if (error instanceof Error && "code" in error && error.code === "ENOENT") return { ok: true };
+      if (
+        error instanceof Error &&
+        "code" in error &&
+        (error.code === "ENOENT" || error.code === "ENOTDIR")
+      )
+        return { ok: true };
       throw error;
     }
   }
@@ -85,7 +90,12 @@ export const checkPathWithinRoot = async (input: {
       };
     }
   } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === "ENOENT") return { ok: true };
+    if (
+      error instanceof Error &&
+      "code" in error &&
+      (error.code === "ENOENT" || error.code === "ENOTDIR")
+    )
+      return { ok: true };
     throw error;
   }
 
