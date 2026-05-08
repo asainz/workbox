@@ -65,6 +65,7 @@ describe("provision runner", () => {
       expect(result.status).toBe("ok");
       expect(result.message).toBe("provision completed.");
       expect(result.copies.map((copy) => copy.status)).toEqual(["copied", "skipped"]);
+      expect(result.copies[0]).toEqual(expect.objectContaining({ required: false }));
       expect(result.steps[0]).toEqual(
         expect.objectContaining({
           name: "env",

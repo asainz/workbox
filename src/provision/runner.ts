@@ -21,6 +21,7 @@ type ProvisionStep = {
 type ProvisionCopyResult = {
   from: string;
   to: string;
+  required: boolean;
   source: string;
   destination: string;
   status: "copied" | "skipped" | "failed";
